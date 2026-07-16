@@ -1,0 +1,56 @@
+#!/usr/bin/env bb
+;; Normal acceptance run: for every feature file, parse to JSON IR with the APS
+;; gherkin-parser, generate a runnable entry point, then execute it. Exits
+;; non-zero if any generated acceptance test fails.
+(require '[babashka.fs :as fs]
+         '[babashka.process :as p]
+         '[babashka.classpath :as cp])
+
+(def script (fs/canonicalize *file*))
+(def acc (str (fs/parent (fs/parent script))))       ; bin/.. = acceptance root
+(def root (str (fs/parent acc)))                     ; worktree root
+(cp/add-classpath (str acc "/src"))
+(require '[aps-project.generator :as g])
+
+;; Features are the specifier's deliverable, authored at the repo-root features/
+;; directory; the pipeline consumes them there so there is a single source.
+(def features-dir (str root "/features"))
+(def ir-dir (str acc "/build/acceptance/ir"))
+(def gen-dir (str acc "/build/acceptance/generated"))
+(def parser-cfg (str root "/.aps/bb.edn"))
+
+(defn parse-feature! [feature ir-out]
+  (let [{:keys [exit err]}
+        (p/shell {:continue true :out :string :err :string}
+                 "bb" "--config" parser-cfg "gherkin-parser" feature ir-out)]
+    (when-not (zero? exit)
+      (throw (ex-info (str "parse failed: " feature "\n" err) {})))))
+
+(defn run-generated [test-file]
+  (let [{:keys [exit out]}
+        (p/shell {:continue true :out :string :err :out}
+                 "bb" "--classpath" (str acc "/src") test-file)]
+    (print out)
+    (zero? exit)))
+
+(defn -main []
+  (fs/create-dirs ir-dir)
+  (fs/create-dirs gen-dir)
+  (let [features (sort (map str (fs/glob features-dir "*.feature")))]
+    (if (empty? features)
+      (do (println "No feature files under" features-dir "- acceptance pipeline is installed and idle.")
+          (System/exit 0))
+      (let [oks (doall
+                 (for [feature features
+                       :let [stem (-> feature fs/file-name (clojure.string/replace #"\.feature$" ""))
+                             ir (str ir-dir "/" stem ".json")]]
+                   (do
+                     (println "==>" (fs/file-name feature))
+                     (parse-feature! feature ir)
+                     (let [{:keys [test-file]} (g/generate ir gen-dir)]
+                       (run-generated test-file)))))]
+        (println)
+        (println (count (filter true? oks)) "of" (count oks) "feature(s) passed")
+        (System/exit (if (every? true? oks) 0 1))))))
+
+(-main)

@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# TEMPLATE: headless acceptance harness. Runs your Android-free product classes
+# on a plain JVM so the Babashka acceptance pipeline can drive real behavior
+# without an emulator. Wire it to your project by setting the two variables in
+# the "project wiring" block below:
+#   - main_class: the Kotlin harness entrypoint you expose (see Harness.kt)
+#   - classes:    where the debug Kotlin compiles to (default Android layout)
+#
+# Usage: product-harness <command> [args...]
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+acc="$(cd "$here/.." && pwd)"
+root="$(cd "$acc/.." && pwd)"
+
+# --- project wiring: set these two for your product ---------------------------
+main_class="com.example.acceptance.HarnessKt"
+# Kotlin Gradle Plugin output location for the debug variant (AGP + kotlin-android).
+classes="$root/app/build/tmp/kotlin-classes/debug"
+# -----------------------------------------------------------------------------
+# Shared Gradle home so every worktree (and Android Studio) reuses one dependency
+# cache instead of duplicating GBs per worktree. Override with GRADLE_USER_HOME.
+gradle_home="${GRADLE_USER_HOME:-$HOME/.gradle}"
+class_file="$classes/$(printf '%s' "$main_class" | tr '.' '/').class"
+
+# Compile the debug Kotlin once if the harness class is missing. Try offline
+# first (fast, no network); if that fails — e.g. a fresh Gradle home with no
+# cached dependencies, as on a clean checkout — fall back to an online build
+# that populates the cache, so acceptance tests work without a manual prime.
+# The harness now drives the real TaskListViewModel, so it needs the full
+# plain-JVM runtime classpath (androidx-lifecycle classes.jars, coroutines-core,
+# coroutines-test, stdlib, ...). Gradle resolves that graph correctly, so instead
+# of hand-hunting jars we compile the debug variant and dump the runtime classpath
+# to a file (see :app:dumpHarnessClasspath). Both are (re)generated only when
+# missing; delete app/build/harness/classpath.txt to force a refresh.
+cp_file="$root/app/build/harness/classpath.txt"
+
+if [ ! -f "$class_file" ] || [ ! -f "$cp_file" ]; then
+  gradle_tasks=":app:compileDebugKotlin :app:dumpHarnessClasspath"
+  if ! ( cd "$root" && sh ./gradlew --gradle-user-home "$gradle_home" --offline -q $gradle_tasks ) 1>&2; then
+    ( cd "$root" && sh ./gradlew --gradle-user-home "$gradle_home" -q $gradle_tasks ) 1>&2
+  fi
+fi
+
+deps="$(cat "$cp_file" 2>/dev/null)"
+if [ -z "$deps" ]; then
+  echo "product-harness: harness runtime classpath not resolved ($cp_file)" >&2
+  exit 1
+fi
+
+# SavedStateHandle's static init references android.os.Binder, so the harness needs
+# the platform android.jar (stubs) on its classpath — the same jar AGP puts on the
+# unit-test classpath. Locate it from the SDK dir (local.properties, then env vars).
+# The `|| true` keeps a missing local.properties (e.g. a fresh clone) from tripping
+# `set -e` before the ANDROID_HOME/ANDROID_SDK_ROOT/default fallback can run.
+sdk_dir="$(sed -n 's/^sdk\.dir=//p' "$root/local.properties" 2>/dev/null || true)"
+[ -z "$sdk_dir" ] && sdk_dir="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
+android_jar="$(ls "$sdk_dir"/platforms/android-*/android.jar 2>/dev/null | sort -V | tail -1)"
+if [ -z "$android_jar" ]; then
+  echo "product-harness: android.jar not found under $sdk_dir/platforms" >&2
+  exit 1
+fi
+
+# Fresh compiled classes first so they shadow any stale copy in the resolved deps.
+exec java -cp "$classes:$deps:$android_jar" "$main_class" "$@"

@@ -1,0 +1,63 @@
+<resources>
+    <string name="app_name">Task Board</string>
+
+    <!-- Task list states -->
+    <string name="tasks_loading">Loading…</string>
+    <string name="tasks_empty">No tasks yet</string>
+    <string name="tasks_no_results">No tasks match your search</string>
+    <string name="tasks_error">Couldn\'t load tasks</string>
+    <string name="action_retry">Retry</string>
+
+    <!-- Delete -->
+    <string name="task_deleted">Task deleted</string>
+    <string name="action_undo">Undo</string>
+
+    <!-- Add task -->
+    <string name="action_add">Add task</string>
+    <string name="add_dialog_title">New task</string>
+    <string name="add_title_label">Title</string>
+    <string name="add_notes_label">Notes</string>
+    <string name="dialog_add">Add</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="save_failed">Couldn\'t save. Please try again.</string>
+
+    <!-- Detail / edit -->
+    <string name="detail_title">Edit task</string>
+    <string name="detail_save">Save</string>
+    <string name="detail_placeholder">Select a task to edit</string>
+    <string name="priority_label">Priority</string>
+    <string name="due_date_label">Due date</string>
+    <string name="due_date_none">No due date</string>
+    <string name="due_date_set">Set</string>
+    <string name="due_date_clear">Clear</string>
+
+    <!-- Task card subtitle -->
+    <string name="label_priority">Priority: %1$s</string>
+    <string name="label_due_date">Due date: %1$s</string>
+
+    <!-- Relative due-date labels -->
+    <string name="due_today">Today</string>
+    <string name="due_tomorrow">Tomorrow</string>
+    <string name="due_yesterday">Yesterday</string>
+    <string name="due_in_days">in %1$d days</string>
+    <string name="due_days_ago">%1$d days ago</string>
+
+    <!-- Search &amp; sort -->
+    <string name="search_label">Search tasks</string>
+    <string name="sort_menu_title">Sort by</string>
+    <string name="sort_priority">Priority</string>
+    <string name="sort_completion">Completion</string>
+    <string name="sort_default">Default</string>
+
+    <!-- Theme -->
+    <string name="theme_title">Theme</string>
+    <string name="theme_action">Choose theme</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_search">Search</string>
+    <string name="cd_sort">Sort tasks</string>
+    <string name="cd_theme">Change theme</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_add">Add task</string>
+    <string name="cd_delete">Delete task</string>
+</resources>

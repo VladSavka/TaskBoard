@@ -1,0 +1,27 @@
+.DS_Store
+.env
+.claude/
+.swarmforge/
+.worktrees/
+
+# Local Android SDK config (per-machine; must never be committed)
+local.properties
+
+# SwarmForge agent orchestration (kept local; not part of the app deliverable)
+swarmforge/
+swarm
+
+# Build output and IDE/tooling artifacts
+.gradle/
+build/
+app/build/
+acceptance/build/
+.idea/
+tmp/
+
+# APS acceptance tools installed fresh per checkout (not vendored)
+.aps/
+.speclj-structure-check/
+
+# Refactorer analysis tooling (detekt CRAP/DRY gate), installed fresh, not vendored
+tools/

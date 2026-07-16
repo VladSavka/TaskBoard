@@ -1,0 +1,25 @@
+{:paths ["src" "spec"]
+ :deps {speclj/speclj {:mvn/version "3.10.0"}}
+ :tasks
+ {gherkin-parser {:doc "Parse a feature file into JSON IR via the APS Babashka tool."
+                  :requires ([babashka.process :as p])
+                  :task (let [args *command-line-args*
+                              cfg (str (System/getProperty "user.dir") "/../.aps/bb.edn")]
+                          (-> (apply p/shell "bb" "--config" cfg "gherkin-parser" args)
+                              :exit
+                              (System/exit)))}
+  generate {:doc "Generate acceptance entry points from JSON IR."
+            :requires ([aps-project.generator :as g])
+            :task (apply g/-main *command-line-args*)}
+  test {:doc "Run harness unit specs with Speclj."
+        :task (do (require 'speclj.main)
+                  ((resolve 'speclj.main/-main) "-c" "spec"))}
+  check {:doc "Validate Speclj spec structure via APS speclj-structure-check."
+         :extra-paths ["../.speclj-structure-check/src"]
+         :requires ([speclj-structure-check.core :as core])
+         :task (apply core/-main (or (seq *command-line-args*) ["spec"]))}
+  verify {:doc "Structure-check the specs, then run them. Fails fast on a bad structure."
+          :requires ([babashka.process :as p])
+          :task (do (let [{:keys [exit]} (p/shell {:continue true} "bb" "check" "spec")]
+                      (when-not (zero? exit) (System/exit exit)))
+                    (System/exit (:exit (p/shell {:continue true} "bb" "test"))))}}}

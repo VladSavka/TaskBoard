@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Project acceptance entrypoint generator: JSON IR -> runnable entry point.
+# Usage: acceptance-entrypoint-generator <json-ir> <generated-test-output>
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+acc="$(cd "$here/.." && pwd)"
+exec bb --config "$acc/bb.edn" generate "$@"
